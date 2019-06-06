@@ -161,7 +161,15 @@ static int oldest_rec(struct buffer_list *l, int len)
 
 static void clear_rec(struct buffer_list *l, int i)
 {
+	if (g_Dbg) {
+		printf("clear_rec(): hid=%x tex=%x %x\n",
+			l->l[i].hyper_dmabuf_id,
+			l->l[i].textureId[0],
+			l->l[i].textureId[1]);
+	}
+
 	l->l[i].age = 0;
+
 	glDeleteTextures(2, l->l[i].textureId);
 
 	if (l->l[i].buffer)
@@ -447,11 +455,16 @@ static void create_new_buffer_common(int dmabuf_fd)
 			textureId[1] = 0;
 			current_textureId[0] = textureId[0];
 			current_textureId[1] = 0;
+
 			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
 					GL_LINEAR);
 			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
 					GL_LINEAR);
-
+			if (g_Dbg) {
+				printf("Generate Textures: [%x, %x] for hbuf(%x)\n",
+					current_textureId[0], current_textureId[1],
+					hyper_dmabuf_id.id);
+			}
 			EGLint imageAttributes[] = {
 				EGL_WIDTH, surf_width,
 				EGL_HEIGHT, surf_height,
