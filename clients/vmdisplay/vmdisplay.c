@@ -126,6 +126,7 @@ static int find_rec(struct buffer_list *l, uint32_t id)
 	for (i = 0; i < l->len; i++) {
 		if (l->l[i].hyper_dmabuf_id == id) {
 			r = i;
+			break;
 		}
 	}
 
