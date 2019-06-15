@@ -305,8 +305,12 @@ static void create_new_buffer_common(int dmabuf_fd)
 	case DRM_FORMAT_ABGR8888:
 	case DRM_FORMAT_RGB565:
 	case DRM_FORMAT_RGB888:
+		break;
 	case DRM_FORMAT_YUYV:
+		printf("video is DRM_FORMAT_YUYV(%x)\n", surf_format);
+		break;
 	case DRM_FORMAT_NV12:
+		printf("video is DRM_FORMAT_NV12(%x)\n", surf_format);
 		break;
 	default:
 		printf("Non supported surface format 0x%x\n", surf_format);
@@ -323,6 +327,7 @@ static void create_new_buffer_common(int dmabuf_fd)
 		}
 		EGLImageKHR khr_image;
 		if (surf_format == DRM_FORMAT_NV12) {
+			printf("Try to create texture of DRM_FORMAT_NV12\n");
 			glGenTextures(2, textureId);
 			glBindTexture(GL_TEXTURE_2D, textureId[0]);
 			glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
@@ -447,6 +452,7 @@ static void create_new_buffer_common(int dmabuf_fd)
 					    DRM_FORMAT_ARGB8888;
 				} else {
 					printf("DRI not supporint NV12\n");
+					close(dmabuf_fd);
 					return;
 				}
 			}
