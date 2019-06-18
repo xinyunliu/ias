@@ -386,6 +386,7 @@ static void create_new_buffer_common(int dmabuf_fd)
 					 imageAttributes_tex0);
 
 			if (khr_image) {
+				printf("Successed: create_image with imageAttributes_tex0\n");
 				image_target_texture_2d(GL_TEXTURE_2D,
 							khr_image);
 				destroy_image(g_eman_common.dpy, khr_image);
@@ -397,12 +398,19 @@ static void create_new_buffer_common(int dmabuf_fd)
 						 EGL_LINUX_DMA_BUF_EXT,
 						 (EGLClientBuffer) NULL,
 						 imageAttributes_tex1);
+				if(!khr_image) {
+					printf("Failed: create_image with imageAttributes_tex1\n");
+				}else {
+					printf("Successed: create_image with imageAttributes_tex1\n");
+				}
+
 				image_target_texture_2d(GL_TEXTURE_2D,
 							khr_image);
 				destroy_image(g_eman_common.dpy, khr_image);
 				current_texture_sampler_format =
 				    DRM_FORMAT_NV12;
 			} else {
+				printf("Failed: create_image with imageAttributes_tex0\n");
 				EGLint imageAttributes[] = {
 					EGL_WIDTH, surf_width,
 					EGL_HEIGHT, surf_height,
@@ -446,7 +454,10 @@ static void create_new_buffer_common(int dmabuf_fd)
 						 (EGLClientBuffer) NULL,
 						 imageAttributes);
 
+				printf("Trying create_image with imageAttributes(NV12)\n");
 				if (khr_image) {
+
+					printf("Successed: create_image with imageAttributes(NV12)\n");
 					image_target_texture_2d(GL_TEXTURE_2D,
 								khr_image);
 					destroy_image(g_eman_common.dpy,
