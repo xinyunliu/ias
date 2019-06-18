@@ -1123,6 +1123,7 @@ static void usage(int error_code)
 		"  -H\tWindow height\n"
 		"  -W\tWindow width\n"
 		"  -d\tDisplay number\n"
+		"  -g\tEnable debug output\n"
 		"  -w\tUse wl_drm for rendering\n" "  -h\tThis help text\n\n");
 	exit(error_code);
 }
@@ -1173,6 +1174,8 @@ int main(int argc, char **argv)
 			use_egl = 0;
 		} else if (strcmp("-e", argv[i]) == 0) {
 			use_event_poll = 1;
+		} else if (strcmp("-g", argv[i]) == 0) {
+			g_Dbg = 1;
 		} else if (strcmp("-h", argv[i]) == 0)
 			usage(EXIT_SUCCESS);
 	}
