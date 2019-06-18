@@ -910,6 +910,10 @@ main(int argc, char **argv)
 	}
 
 	display = create_display(opts, import_format);
+	if (!display) {
+		printf("failed to create display\n");
+		return 1;
+	}
 	window = create_window(display, 256, 256, import_format, opts);
 	if (!window)
 		return 1;
