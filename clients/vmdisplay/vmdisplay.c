@@ -116,6 +116,54 @@ int open_drm(void)
 	return fd;
 }
 
+
+/* dump dma_buf binary data to file for offline analysis
+   fd: dma_buf file discriptor
+   fname: offline file name
+   size: the count of bytes
+*/
+static void dump_dmabuf_data_to_file(int fd, const char *fname, size_t size)
+{
+	FILE * pfile = NULL;
+	char *ptr = NULL;
+
+	printf("mmap fd:%d size:%ld of file:%s\n", fd, size, fname);
+
+	ptr = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
+	if (ptr == MAP_FAILED) {
+		fprintf(stderr, " dump_dmabuf_data: mmap failed\n");
+		return;
+	} else {
+		printf(" map successfully\n");
+	}
+
+	printf("Open %s\n", fname);
+	pfile = fopen(fname, "wb");
+	if(pfile) {
+		fwrite(ptr, size, 1, pfile);
+		fclose(pfile);
+		printf(" dump to %s successed\n", fname);
+	} else {
+		printf(" Failed: can't open %s", fname);
+	}
+
+	munmap(ptr, size);
+}
+
+static void dump_dmabuf_data(int fd, const char *fname, int width, int height, int bpp, int n)
+{
+	static int i = 0;
+	char bin_name[100];
+
+	sprintf(bin_name,"%s_%d_%d_%d_%d.bin",
+			fname, width, height, bpp, i);
+
+	if(i<n) {
+		dump_dmabuf_data_to_file(fd, bin_name, width*height*bpp/8);
+		i++;
+	}
+}
+
 #define ALIGN(x, y) ((x + y - 1) & ~(y - 1))
 
 static int find_rec(struct buffer_list *l, uint32_t id)
@@ -347,6 +395,8 @@ static void create_new_buffer_common(int dmabuf_fd)
 			current_textureId[0] = textureId[0];
 			current_textureId[1] = textureId[1];
 
+			dump_dmabuf_data(dmabuf_fd, "/tmp/nv12", surf_width, surf_height, 12, 3);
+
 			EGLint imageAttributes_tex0[] = {
 				EGL_WIDTH, surf_width,
 				EGL_HEIGHT, surf_height,
@@ -486,6 +536,8 @@ static void create_new_buffer_common(int dmabuf_fd)
 					current_textureId[0], current_textureId[1],
 					hyper_dmabuf_id.id);
 			}
+
+			dump_dmabuf_data(dmabuf_fd, "/tmp/bmp", surf_width, surf_height, 32, 4);
 			EGLint imageAttributes[] = {
 				EGL_WIDTH, surf_width,
 				EGL_HEIGHT, surf_height,
