@@ -37,6 +37,7 @@
 #include <poll.h>
 #include <errno.h>
 #include <stdio.h>
+#include <sys/time.h>
 #include "vmdisplay-server-hyperdmabuf.h"
 
 #define METADATA_SZ (sizeof(struct vm_header) +\
@@ -151,6 +152,10 @@ int HyperDMABUFCommunicator::recv_metadata(void **buffer)
 		} while(len < 0);
 
 		event_hdr = (struct hyper_dmabuf_event_hdr *)&metadata[0];
+
+		struct timeval start;
+		gettimeofday( &start, NULL );
+		printf("frame_count=%d time stamp=%ld\n",hdr->counter,start.tv_sec*1000000+start.tv_usec);
 
 		/* Copy HID from event_hdr */
 		buf_info->hyper_dmabuf_id = event_hdr->hid;
