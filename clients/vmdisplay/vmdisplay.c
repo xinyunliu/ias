@@ -116,6 +116,51 @@ int open_drm(void)
 	return fd;
 }
 
+int import_bo_from_hbuf(int hyper_dmabuf_fd, hyper_dmabuf_id_t hid,
+                        int width, int height, int bpp, char *out_buf)
+{
+        struct ioctl_hyper_dmabuf_export_fd msg = {0};
+        int drm_fd;
+        drm_intel_bo *bo;
+        ssize_t size = width * height * bpp/8;
+
+        msg.hid = hid;
+
+        if(ioctl(hyper_dmabuf_fd, IOCTL_HYPER_DMABUF_EXPORT_FD, &msg)) {
+                printf("%s: ioctl failed\n", __func__);
+                return -1;
+        }
+
+        printf("%s: ioctl successful\n", __func__);
+
+        drm_fd = drmOpen("i915", NULL);
+        if (drm_fd < 0) {
+                printf("Failed to open drm device\n");
+                return -1;
+        }
+
+        dri_bufmgr *bufmgr = intel_bufmgr_gem_init(drm_fd, 0x80000);
+
+        bo = drm_intel_bo_gem_create_from_prime(bufmgr, msg.fd, size);
+
+        if (!bo) {
+                printf("failed to map bo\n");
+                return -1;
+        }
+
+        drm_intel_gem_bo_map_gtt(bo);
+
+        if (!bo->virtual) {
+                printf("failed to map bo in aperture\n");
+                return -1;
+        }
+
+        /* Get data from start of buffer and print them out */
+        memcpy(out_buf, (char*)bo->virtual, size);
+        drm_intel_gem_bo_unmap_gtt(bo);
+
+        return 0;
+}
 
 /* dump dma_buf binary data to file for offline analysis
    fd: dma_buf file discriptor
@@ -125,29 +170,57 @@ int open_drm(void)
 static void dump_dmabuf_data_to_file(int fd, const char *fname, size_t size)
 {
 	FILE * pfile = NULL;
-	char *ptr = NULL;
+	size_t len=0;
 
-	printf("mmap fd:%d size:%ld of file:%s\n", fd, size, fname);
+	int drm_fd;
+	drm_intel_bo *bo;
 
-	ptr = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
-	if (ptr == MAP_FAILED) {
-		fprintf(stderr, " dump_dmabuf_data: mmap failed\n");
+	drm_fd = drmOpen("i915", NULL);
+	if (drm_fd < 0) {
+		printf("Failed to open drm device\n");
 		return;
-	} else {
-		printf(" map successfully\n");
+	}
+
+	dri_bufmgr *bufmgr = intel_bufmgr_gem_init(drm_fd, 0x1000*8);
+
+	bo = drm_intel_bo_gem_create_from_prime(bufmgr, fd, size);
+
+	if (!bo) {
+		printf("failed to map bo\n");
+		goto err_drm_cleanup;
+	}
+
+	drm_intel_gem_bo_map_gtt(bo);
+
+	if (!bo->virtual) {
+		printf("failed to map bo in aperture\n");
+		goto err_bufmgr_cleanup;
 	}
 
 	printf("Open %s\n", fname);
 	pfile = fopen(fname, "wb");
 	if(pfile) {
-		fwrite(ptr, size, 1, pfile);
+		/* Get data from start of buffer and print them out */
+		/*  memcpy(out_buf, (int*)bo->virtual, size); */
+		len = fwrite(bo->virtual, 1, size, pfile);
 		fclose(pfile);
-		printf(" dump to %s successed\n", fname);
+		printf(" dump %ld bytes to %s successed\n", len, fname);
 	} else {
 		printf(" Failed: can't open %s", fname);
 	}
 
-	munmap(ptr, size);
+	drm_intel_gem_bo_unmap_gtt(bo);
+
+err_bo_cleanup:
+	drm_intel_bo_unreference(bo);
+
+err_bufmgr_cleanup:
+	drm_intel_bufmgr_destroy(bufmgr);
+
+err_drm_cleanup:
+	drmClose(drm_fd);
+
+	return;
 }
 
 static void dump_dmabuf_data(int fd, const char *fname, int width, int height, int bpp, int n)
@@ -155,10 +228,10 @@ static void dump_dmabuf_data(int fd, const char *fname, int width, int height, i
 	static int i = 0;
 	char bin_name[100];
 
-	sprintf(bin_name,"%s_%d_%d_%d_%d.bin",
-			fname, width, height, bpp, i);
+	printf("dump_dmabuf_data: w:%d h:%d bpp:%d times:%d\n", width, height, bpp, n);
 
 	if(i<n) {
+		sprintf(bin_name,"%s_%d_%d_%d_%d.bin", fname, width, height, bpp, i);
 		dump_dmabuf_data_to_file(fd, bin_name, width*height*bpp/8);
 		i++;
 	}
@@ -345,24 +418,36 @@ static void create_new_buffer_common(int dmabuf_fd)
 	GLuint textureId[2];
 	struct zwp_linux_buffer_params_v1 *params;
 	int i;
+	int bpp;
 
 	struct timeval start, end;
 	gettimeofday( &start, NULL );
 	printf("create_new_buffer_common() start:  time stamp=%ld\n", start.tv_sec*1000000+start.tv_usec);
 
+	printf("format:%x\n", surf_format);
 	switch (surf_format) {
 	case DRM_FORMAT_XRGB8888:
 	case DRM_FORMAT_ARGB8888:
 	case DRM_FORMAT_XBGR8888:
 	case DRM_FORMAT_ABGR8888:
+		bpp = 32;
+		printf("XRGB 8888 and bpp: 32\n");
+		break;
 	case DRM_FORMAT_RGB565:
+		printf("RGB 565 and bpp: 16\n");
+		bpp = 16;
+		break;
 	case DRM_FORMAT_RGB888:
+		printf("RGB 888 and bpp: 24\n");
+		bpp = 24;
 		break;
 	case DRM_FORMAT_YUYV:
 		printf("video is DRM_FORMAT_YUYV(%x)\n", surf_format);
+		bpp = 16;
 		break;
 	case DRM_FORMAT_NV12:
 		printf("video is DRM_FORMAT_NV12(%x)\n", surf_format);
+		bpp = 12;
 		break;
 	default:
 		printf("Non supported surface format 0x%x\n", surf_format);
@@ -395,7 +480,23 @@ static void create_new_buffer_common(int dmabuf_fd)
 			current_textureId[0] = textureId[0];
 			current_textureId[1] = textureId[1];
 
-			dump_dmabuf_data(dmabuf_fd, "/tmp/nv12", surf_width, surf_height, 12, 3);
+			dump_dmabuf_data(dmabuf_fd, "/root/nv12", surf_width, surf_height, bpp, 5);
+
+			if(0){
+				int bpp = 12;
+				char bin_name[100];
+				FILE * pfile = NULL;
+				size_t len = surf_width * surf_height * bpp /8;
+				char *data = malloc(len);
+				if ((hyper_dmabuf_id.id & 0x2) == 2) {
+					sprintf(bin_name,"%s_%d_%d_%d.bin", "nv12", surf_width, surf_height, bpp);
+					import_bo_from_hbuf(hyper_dmabuf_fd, hyper_dmabuf_id, surf_width, surf_height, bpp, data);
+					pfile = fopen(bin_name, "wb");
+					fwrite(data, 1, len, pfile);
+					fclose(pfile);
+					free(data);
+				}
+			}
 
 			EGLint imageAttributes_tex0[] = {
 				EGL_WIDTH, surf_width,
@@ -537,7 +638,23 @@ static void create_new_buffer_common(int dmabuf_fd)
 					hyper_dmabuf_id.id);
 			}
 
-			dump_dmabuf_data(dmabuf_fd, "/tmp/bmp", surf_width, surf_height, 32, 4);
+			//dump_dmabuf_data(dmabuf_fd, "/root/bmp", surf_width, surf_height, bpp, 5);
+
+			if(0){
+				int bpp = 32;
+				char bin_name[100];
+				FILE * pfile = NULL;
+				size_t len = surf_width * surf_height * bpp /8;
+				char *data = malloc(len);
+				if ((hyper_dmabuf_id.id & 0x2) == 2) {
+					sprintf(bin_name,"%s_%d_%d_%d.bin", "rgb", surf_width, surf_height, bpp);
+					import_bo_from_hbuf(hyper_dmabuf_fd, hyper_dmabuf_id, surf_width, surf_height, bpp, data);
+					pfile = fopen(bin_name, "wb");
+					fwrite(data, 1, len, pfile);
+					fclose(pfile);
+					free(data);
+				}
+			}
 			EGLint imageAttributes[] = {
 				EGL_WIDTH, surf_width,
 				EGL_HEIGHT, surf_height,
@@ -638,6 +755,7 @@ void create_new_hyper_dmabuf_buffer(void)
 	create_new_buffer_common(msg.fd);
 
 	close(msg.fd);
+
 }
 
 void clear_hyper_dmabuf_list(void)
