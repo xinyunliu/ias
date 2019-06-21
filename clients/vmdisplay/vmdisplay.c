@@ -505,12 +505,6 @@ static void create_new_buffer_common(int dmabuf_fd)
 				EGL_DMA_BUF_PLANE0_FD_EXT, dmabuf_fd,
 				EGL_DMA_BUF_PLANE0_OFFSET_EXT, surf_offset[0],
 				EGL_DMA_BUF_PLANE0_PITCH_EXT, surf_stride[0],
-				EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT,
-				fourcc_mod_code(INTEL,
-						surf_tile_format) & 0xFFFFFFFF,
-				EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT,
-				fourcc_mod_code(INTEL,
-						surf_tile_format) >> 32,
 				EGL_NONE
 			};
 			EGLint imageAttributes_tex1[] = {
@@ -520,12 +514,6 @@ static void create_new_buffer_common(int dmabuf_fd)
 				EGL_DMA_BUF_PLANE0_FD_EXT, dmabuf_fd,
 				EGL_DMA_BUF_PLANE0_OFFSET_EXT, surf_offset[1],
 				EGL_DMA_BUF_PLANE0_PITCH_EXT, surf_stride[1],
-				EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT,
-				fourcc_mod_code(INTEL,
-						surf_tile_format) & 0xFFFFFFFF,
-				EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT,
-				fourcc_mod_code(INTEL,
-						surf_tile_format) >> 32,
 				EGL_NONE
 			};
 
@@ -567,10 +555,6 @@ static void create_new_buffer_common(int dmabuf_fd)
 					EGL_HEIGHT, surf_height,
 					EGL_LINUX_DRM_FOURCC_EXT,
 					DRM_FORMAT_NV12,
-					EGL_YUV_COLOR_SPACE_HINT_EXT,
-					EGL_ITU_REC601_EXT,
-					EGL_SAMPLE_RANGE_HINT_EXT,
-					EGL_YUV_NARROW_RANGE_EXT,
 					EGL_DMA_BUF_PLANE0_FD_EXT, dmabuf_fd,
 					EGL_DMA_BUF_PLANE0_OFFSET_EXT,
 					surf_offset[0],
@@ -581,20 +565,6 @@ static void create_new_buffer_common(int dmabuf_fd)
 					surf_offset[1],
 					EGL_DMA_BUF_PLANE1_PITCH_EXT,
 					surf_stride[1],
-					EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT,
-					fourcc_mod_code(INTEL,
-							surf_tile_format) &
-					    0xFFFFFFFF,
-					EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT,
-					fourcc_mod_code(INTEL,
-							surf_tile_format) >> 32,
-					EGL_DMA_BUF_PLANE1_MODIFIER_LO_EXT,
-					fourcc_mod_code(INTEL,
-							surf_tile_format) &
-					    0xFFFFFFFF,
-					EGL_DMA_BUF_PLANE1_MODIFIER_HI_EXT,
-					fourcc_mod_code(INTEL,
-							surf_tile_format) >> 32,
 					EGL_NONE
 				};
 
