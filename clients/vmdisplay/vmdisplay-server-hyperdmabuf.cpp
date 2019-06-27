@@ -153,9 +153,11 @@ int HyperDMABUFCommunicator::recv_metadata(void **buffer)
 
 		event_hdr = (struct hyper_dmabuf_event_hdr *)&metadata[0];
 
-		struct timeval start;
-		gettimeofday( &start, NULL );
-		printf("frame_count=%d time stamp=%ld\n",hdr->counter,start.tv_sec*1000000+start.tv_usec);
+		if (0) {
+			struct timeval start;
+			gettimeofday( &start, NULL );
+			printf("frame_count=%d time stamp=%ld\n",hdr->counter,start.tv_sec*1000000+start.tv_usec);
+		}
 
 		/* Copy HID from event_hdr */
 		buf_info->hyper_dmabuf_id = event_hdr->hid;

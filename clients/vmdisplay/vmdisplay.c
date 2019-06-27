@@ -421,10 +421,12 @@ static void create_new_buffer_common(int dmabuf_fd)
 	int bpp;
 
 	struct timeval start, end;
-	gettimeofday( &start, NULL );
-	printf("create_new_buffer_common() start:  time stamp=%ld\n", start.tv_sec*1000000+start.tv_usec);
+	if (g_Dbg) {
+		gettimeofday( &start, NULL );
+		printf("create_new_buffer_common() start:  time stamp=%ld\n", start.tv_sec*1000000+start.tv_usec);
+	}
 
-	printf("format:%x\n", surf_format);
+	printf("format:%x tile:%x\n", surf_format, surf_tile_format);
 	switch (surf_format) {
 	case DRM_FORMAT_XRGB8888:
 	case DRM_FORMAT_ARGB8888:
@@ -700,9 +702,11 @@ static void create_new_buffer_common(int dmabuf_fd)
 	}
 	update_oldest_rec_hyper_dmabuf(hyper_dmabuf_id.id, textureId, buf,
 				       surf_width, surf_height, 0);
-	gettimeofday( &end, NULL );
-	printf("create_new_buffer_common() done:   time stamp=%ld  duration(ms):%ld\n", end.tv_sec*1000000+end.tv_usec,
-			((end.tv_sec*1000000+end.tv_usec)- (start.tv_sec*1000000+start.tv_usec))/1000);
+	if(g_Dbg) {
+		gettimeofday( &end, NULL );
+		printf("create_new_buffer_common() done:   time stamp=%ld  duration(ms):%ld\n", end.tv_sec*1000000+end.tv_usec,
+				((end.tv_sec*1000000+end.tv_usec)- (start.tv_sec*1000000+start.tv_usec))/1000);
+	}
 
 
 }
