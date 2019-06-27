@@ -484,22 +484,6 @@ static void create_new_buffer_common(int dmabuf_fd)
 
 			dump_dmabuf_data(dmabuf_fd, "/root/nv12", surf_width, surf_height, bpp, 5);
 
-			if(0){
-				int bpp = 12;
-				char bin_name[100];
-				FILE * pfile = NULL;
-				size_t len = surf_width * surf_height * bpp /8;
-				char *data = malloc(len);
-				if ((hyper_dmabuf_id.id & 0x2) == 2) {
-					sprintf(bin_name,"%s_%d_%d_%d.bin", "nv12", surf_width, surf_height, bpp);
-					import_bo_from_hbuf(hyper_dmabuf_fd, hyper_dmabuf_id, surf_width, surf_height, bpp, data);
-					pfile = fopen(bin_name, "wb");
-					fwrite(data, 1, len, pfile);
-					fclose(pfile);
-					free(data);
-				}
-			}
-
 			EGLint imageAttributes_tex0[] = {
 				EGL_WIDTH, surf_width,
 				EGL_HEIGHT, surf_height,
