@@ -416,6 +416,7 @@ int check_for_new_buffer(void)
 static void create_new_buffer_common(int dmabuf_fd)
 {
 	GLuint textureId[2];
+	GLint attribs[23], *attrib;
 	struct zwp_linux_buffer_params_v1 *params;
 	int i;
 	int bpp;
@@ -484,31 +485,33 @@ static void create_new_buffer_common(int dmabuf_fd)
 
 			dump_dmabuf_data(dmabuf_fd, "/root/nv12", surf_width, surf_height, bpp, 5);
 
-			EGLint imageAttributes_tex0[] = {
-				EGL_WIDTH, surf_width,
-				EGL_HEIGHT, surf_height,
-				EGL_LINUX_DRM_FOURCC_EXT, DRM_FORMAT_R8,
-				EGL_DMA_BUF_PLANE0_FD_EXT, dmabuf_fd,
-				EGL_DMA_BUF_PLANE0_OFFSET_EXT, surf_offset[0],
-				EGL_DMA_BUF_PLANE0_PITCH_EXT, surf_stride[0],
-				EGL_NONE
-			};
-			EGLint imageAttributes_tex1[] = {
-				EGL_WIDTH, surf_width / 2,
-				EGL_HEIGHT, surf_height / 2,
-				EGL_LINUX_DRM_FOURCC_EXT, DRM_FORMAT_GR88,
-				EGL_DMA_BUF_PLANE0_FD_EXT, dmabuf_fd,
-				EGL_DMA_BUF_PLANE0_OFFSET_EXT, surf_offset[1],
-				EGL_DMA_BUF_PLANE0_PITCH_EXT, surf_stride[1],
-				EGL_NONE
-			};
+			attrib = attribs;
+			*attrib++ = EGL_WIDTH;
+			*attrib++ = surf_width;
+			*attrib++ = EGL_HEIGHT;
+			*attrib++ = surf_height;
+			*attrib++ = EGL_LINUX_DRM_FOURCC_EXT;
+			*attrib++ = DRM_FORMAT_R8;
+			*attrib++ = EGL_DMA_BUF_PLANE0_FD_EXT;
+			*attrib++ = dmabuf_fd;
+			*attrib++ = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
+			*attrib++ = surf_offset[0];
+			*attrib++ = EGL_DMA_BUF_PLANE0_PITCH_EXT;
+			*attrib++ = surf_stride[0];
+			if (surf_tile_format == I915_TILING_X || surf_tile_format == I915_TILING_Y) {
+				*attrib++ = EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT;
+				*attrib++ = fourcc_mod_code(INTEL, surf_tile_format) & 0xFFFFFFFF;
+				*attrib++ = EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT;
+				*attrib++ = fourcc_mod_code(INTEL, surf_tile_format) >> 32;
+			}
+			*attrib++ = EGL_NONE;
 
 			glBindTexture(GL_TEXTURE_2D, textureId[0]);
 			khr_image =
 			    create_image((EGLDisplay) g_eman_common.dpy,
 					 EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT,
 					 (EGLClientBuffer) NULL,
-					 imageAttributes_tex0);
+					 attribs);
 
 			if (khr_image) {
 				printf("Successed: create_image with imageAttributes_tex0\n");
@@ -517,12 +520,34 @@ static void create_new_buffer_common(int dmabuf_fd)
 				destroy_image(g_eman_common.dpy, khr_image);
 
 				glBindTexture(GL_TEXTURE_2D, textureId[1]);
+
+				attrib = attribs;
+				*attrib++ = EGL_WIDTH;
+				*attrib++ = (surf_width+1)/2;
+				*attrib++ = EGL_HEIGHT;
+				*attrib++ = (surf_height+1)/2;
+				*attrib++ = EGL_LINUX_DRM_FOURCC_EXT;
+				*attrib++ = DRM_FORMAT_GR88;
+				*attrib++ = EGL_DMA_BUF_PLANE0_FD_EXT;
+				*attrib++ = dmabuf_fd;
+				*attrib++ = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
+				*attrib++ = surf_offset[1];
+				*attrib++ = EGL_DMA_BUF_PLANE0_PITCH_EXT;
+				*attrib++ = surf_stride[1];
+				if (surf_tile_format == I915_TILING_X || surf_tile_format == I915_TILING_Y) {
+					*attrib++ = EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT;
+					*attrib++ = fourcc_mod_code(INTEL, surf_tile_format) & 0xFFFFFFFF;
+					*attrib++ = EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT;
+					*attrib++ = fourcc_mod_code(INTEL, surf_tile_format) >> 32;
+				}
+				*attrib++ = EGL_NONE;
+
 				khr_image =
 				    create_image((EGLDisplay) g_eman_common.dpy,
 						 EGL_NO_CONTEXT,
 						 EGL_LINUX_DMA_BUF_EXT,
 						 (EGLClientBuffer) NULL,
-						 imageAttributes_tex1);
+						 attribs);
 				if(!khr_image) {
 					printf("Failed: create_image with imageAttributes_tex1\n");
 				}else {
@@ -536,30 +561,40 @@ static void create_new_buffer_common(int dmabuf_fd)
 				    DRM_FORMAT_NV12;
 			} else {
 				printf("Failed: create_image with imageAttributes_tex0\n");
-				EGLint imageAttributes[] = {
-					EGL_WIDTH, surf_width,
-					EGL_HEIGHT, surf_height,
-					EGL_LINUX_DRM_FOURCC_EXT,
-					DRM_FORMAT_NV12,
-					EGL_DMA_BUF_PLANE0_FD_EXT, dmabuf_fd,
-					EGL_DMA_BUF_PLANE0_OFFSET_EXT,
-					surf_offset[0],
-					EGL_DMA_BUF_PLANE0_PITCH_EXT,
-					surf_stride[0],
-					EGL_DMA_BUF_PLANE1_FD_EXT, dmabuf_fd,
-					EGL_DMA_BUF_PLANE1_OFFSET_EXT,
-					surf_offset[1],
-					EGL_DMA_BUF_PLANE1_PITCH_EXT,
-					surf_stride[1],
-					EGL_NONE
-				};
+
+				attrib = attribs;
+				*attrib++ = EGL_WIDTH;
+				*attrib++ = surf_width;
+				*attrib++ = EGL_HEIGHT;
+				*attrib++ = surf_height;
+				*attrib++ = EGL_LINUX_DRM_FOURCC_EXT;
+				*attrib++ = DRM_FORMAT_NV12;
+				*attrib++ = EGL_DMA_BUF_PLANE0_FD_EXT;
+				*attrib++ = dmabuf_fd;
+				*attrib++ = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
+				*attrib++ = surf_offset[0];
+				*attrib++ = EGL_DMA_BUF_PLANE0_PITCH_EXT;
+				*attrib++ = surf_stride[0];
+				*attrib++ = EGL_DMA_BUF_PLANE1_FD_EXT;
+				*attrib++ = dmabuf_fd;
+				*attrib++ = EGL_DMA_BUF_PLANE1_OFFSET_EXT;
+				*attrib++ = surf_offset[0];
+				*attrib++ = EGL_DMA_BUF_PLANE1_PITCH_EXT;
+				*attrib++ = surf_stride[1];
+				if (surf_tile_format == I915_TILING_X || surf_tile_format == I915_TILING_Y) {
+					*attrib++ = EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT;
+					*attrib++ = fourcc_mod_code(INTEL, surf_tile_format) & 0xFFFFFFFF;
+					*attrib++ = EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT;
+					*attrib++ = fourcc_mod_code(INTEL, surf_tile_format) >> 32;
+				}
+				*attrib++ = EGL_NONE;
 
 				khr_image =
 				    create_image((EGLDisplay) g_eman_common.dpy,
 						 EGL_NO_CONTEXT,
 						 EGL_LINUX_DMA_BUF_EXT,
 						 (EGLClientBuffer) NULL,
-						 imageAttributes);
+						 attribs);
 
 				printf("Trying create_image with imageAttributes(NV12)\n");
 				if (khr_image) {
@@ -596,70 +631,65 @@ static void create_new_buffer_common(int dmabuf_fd)
 
 			//dump_dmabuf_data(dmabuf_fd, "/root/bmp", surf_width, surf_height, bpp, 5);
 
-			if(0){
-				int bpp = 32;
-				char bin_name[100];
-				FILE * pfile = NULL;
-				size_t len = surf_width * surf_height * bpp /8;
-				char *data = malloc(len);
-				if ((hyper_dmabuf_id.id & 0x2) == 2) {
-					sprintf(bin_name,"%s_%d_%d_%d.bin", "rgb", surf_width, surf_height, bpp);
-					import_bo_from_hbuf(hyper_dmabuf_fd, hyper_dmabuf_id, surf_width, surf_height, bpp, data);
-					pfile = fopen(bin_name, "wb");
-					fwrite(data, 1, len, pfile);
-					fclose(pfile);
-					free(data);
-				}
+			attrib = attribs;
+			*attrib++ = EGL_WIDTH;
+			*attrib++ = surf_width;
+			*attrib++ = EGL_HEIGHT;
+			*attrib++ = surf_height;
+			*attrib++ = EGL_LINUX_DRM_FOURCC_EXT;
+			*attrib++ = surf_format;
+			*attrib++ = EGL_DMA_BUF_PLANE0_FD_EXT;
+			*attrib++ = dmabuf_fd;
+			*attrib++ = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
+			*attrib++ = 0;
+			*attrib++ = EGL_DMA_BUF_PLANE0_PITCH_EXT;
+			*attrib++ = surf_stride[0];
+			if (surf_tile_format == I915_TILING_X || surf_tile_format == I915_TILING_Y) {
+				*attrib++ = EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT;
+				*attrib++ = fourcc_mod_code(INTEL, surf_tile_format) & 0xFFFFFFFF;
+				*attrib++ = EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT;
+				*attrib++ = fourcc_mod_code(INTEL, surf_tile_format) >> 32;
 			}
-			EGLint imageAttributes[] = {
-				EGL_WIDTH, surf_width,
-				EGL_HEIGHT, surf_height,
-				EGL_LINUX_DRM_FOURCC_EXT, surf_format,
-				EGL_DMA_BUF_PLANE0_FD_EXT, dmabuf_fd,
-				EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
-				EGL_DMA_BUF_PLANE0_PITCH_EXT, surf_stride[0],
-				EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT,
-				fourcc_mod_code(INTEL,
-						surf_tile_format) & 0xFFFFFFFF,
-				EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT,
-				fourcc_mod_code(INTEL,
-						surf_tile_format) >> 32,
-				EGL_NONE
-			};
-
-			/* In case that DRI does not support natively YUYV import it as ARGB888 */
-			EGLint imageAttributesYUYVFallback[] = {
-				EGL_WIDTH, surf_width / 2,
-				EGL_HEIGHT, surf_height,
-				EGL_LINUX_DRM_FOURCC_EXT, DRM_FORMAT_ARGB8888,
-				EGL_DMA_BUF_PLANE0_FD_EXT, dmabuf_fd,
-				EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
-				EGL_DMA_BUF_PLANE0_PITCH_EXT, surf_stride[0],
-				EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT,
-				fourcc_mod_code(INTEL,
-						surf_tile_format) & 0xFFFFFFFF,
-				EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT,
-				fourcc_mod_code(INTEL,
-						surf_tile_format) >> 32,
-				EGL_NONE
-			};
+			*attrib++ = EGL_NONE;
 
 			khr_image =
 			    create_image((EGLDisplay) g_eman_common.dpy,
 					 EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT,
 					 (EGLClientBuffer) NULL,
-					 imageAttributes);
+					 attribs);
 			/* UFO imports YUYV and on fly is doing color conversion, so in shader such texture behaves like regular RGB texture */
 			current_texture_sampler_format = DRM_FORMAT_ARGB8888;
 			if (!khr_image) {
+				/* In case that DRI does not support natively YUYV import it as ARGB888 */
+				attrib = attribs;
+				*attrib++ = EGL_WIDTH;
+				*attrib++ = surf_width/2;
+				*attrib++ = EGL_HEIGHT;
+				*attrib++ = surf_height;
+				*attrib++ = EGL_LINUX_DRM_FOURCC_EXT;
+				*attrib++ = DRM_FORMAT_ARGB8888;
+				*attrib++ = EGL_DMA_BUF_PLANE0_FD_EXT;
+				*attrib++ = dmabuf_fd;
+				*attrib++ = EGL_DMA_BUF_PLANE0_OFFSET_EXT;
+				*attrib++ = 0;
+				*attrib++ = EGL_DMA_BUF_PLANE0_PITCH_EXT;
+				*attrib++ = surf_stride[0];
+				if (surf_tile_format == I915_TILING_X || surf_tile_format == I915_TILING_Y) {
+					*attrib++ = EGL_DMA_BUF_PLANE0_MODIFIER_LO_EXT;
+					*attrib++ = fourcc_mod_code(INTEL, surf_tile_format) & 0xFFFFFFFF;
+					*attrib++ = EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT;
+					*attrib++ = fourcc_mod_code(INTEL, surf_tile_format) >> 32;
+				}
+				*attrib++ = EGL_NONE;
+
 				khr_image =
-				    create_image((EGLDisplay) g_eman_common.dpy,
-						 EGL_NO_CONTEXT,
-						 EGL_LINUX_DMA_BUF_EXT,
-						 (EGLClientBuffer) NULL,
-						 imageAttributesYUYVFallback);
+					create_image((EGLDisplay) g_eman_common.dpy,
+							EGL_NO_CONTEXT,
+							EGL_LINUX_DMA_BUF_EXT,
+							(EGLClientBuffer) NULL,
+							attribs);
 				current_texture_sampler_format =
-				    DRM_FORMAT_YUYV;
+					DRM_FORMAT_YUYV;
 			}
 			image_target_texture_2d(GL_TEXTURE_2D, khr_image);
 			destroy_image(g_eman_common.dpy, khr_image);
