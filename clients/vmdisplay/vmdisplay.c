@@ -507,11 +507,14 @@ static void create_new_buffer_common(int dmabuf_fd)
 			*attrib++ = EGL_NONE;
 
 			glBindTexture(GL_TEXTURE_2D, textureId[0]);
-			khr_image =
-			    create_image((EGLDisplay) g_eman_common.dpy,
-					 EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT,
-					 (EGLClientBuffer) NULL,
-					 attribs);
+
+			if (1) {
+				/* 2 eglImages from Y and UV seperately */
+				khr_image = create_image((EGLDisplay) g_eman_common.dpy,
+						EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT,
+						(EGLClientBuffer) NULL, attribs);
+			} else  /* 1 eglImage from NV12 directly */
+				khr_image = 0;
 
 			if (khr_image) {
 				printf("Successed: create_image with imageAttributes_tex0\n");
@@ -587,6 +590,10 @@ static void create_new_buffer_common(int dmabuf_fd)
 					*attrib++ = EGL_DMA_BUF_PLANE0_MODIFIER_HI_EXT;
 					*attrib++ = fourcc_mod_code(INTEL, surf_tile_format) >> 32;
 				}
+				*attrib++ = EGL_YUV_COLOR_SPACE_HINT_EXT;
+				*attrib++ = EGL_ITU_REC601_EXT ;
+				*attrib++ = EGL_SAMPLE_RANGE_HINT_EXT;
+				*attrib++ = EGL_YUV_NARROW_RANGE_EXT;
 				*attrib++ = EGL_NONE;
 
 				khr_image =
