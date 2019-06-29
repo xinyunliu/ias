@@ -430,11 +430,20 @@ static void create_new_buffer_common(int dmabuf_fd)
 	printf("format:%x tile:%x\n", surf_format, surf_tile_format);
 	switch (surf_format) {
 	case DRM_FORMAT_XRGB8888:
-	case DRM_FORMAT_ARGB8888:
-	case DRM_FORMAT_XBGR8888:
-	case DRM_FORMAT_ABGR8888:
 		bpp = 32;
 		printf("XRGB 8888 and bpp: 32\n");
+		break;
+	case DRM_FORMAT_ARGB8888:
+		bpp = 32;
+		printf("ARGB 8888 and bpp: 32\n");
+		break;
+	case DRM_FORMAT_XBGR8888:
+		bpp = 32;
+		printf("XBGR 8888 and bpp: 32\n");
+		break;
+	case DRM_FORMAT_ABGR8888:
+		bpp = 32;
+		printf("XBGR 8888 and bpp: 32\n");
 		break;
 	case DRM_FORMAT_RGB565:
 		printf("RGB 565 and bpp: 16\n");
