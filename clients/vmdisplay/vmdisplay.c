@@ -118,14 +118,15 @@ int open_drm(void)
 
 #define ALIGN(x, y) ((x + y - 1) & ~(y - 1))
 
-static int find_rec(struct buffer_list *l, uint32_t id)
+static int find_rec(struct buffer_list *l, hyper_dmabuf_id_t id)
 {
 	int i, r;
 	r = -1;
 
 	for (i = 0; i < l->len; i++) {
-		if (l->l[i].hyper_dmabuf_id == id) {
+		if (memcmp(&l->l[i].hyper_dmabuf_id, &id, sizeof(id)) == 0) {
 			r = i;
+			break;
 		}
 	}
 
@@ -162,7 +163,9 @@ static int oldest_rec(struct buffer_list *l, int len)
 static void clear_rec(struct buffer_list *l, int i)
 {
 	l->l[i].age = 0;
-	glDeleteTextures(2, l->l[i].textureId);
+
+	if (l->l[i].textureId)
+		glDeleteTextures(2, l->l[i].textureId);
 
 	if (l->l[i].buffer)
 		wl_buffer_destroy(l->l[i].buffer);
@@ -172,19 +175,29 @@ static void clear_rec(struct buffer_list *l, int i)
 	l->l[i].width = 0;
 	l->l[i].height = 0;
 	l->l[i].buffer = 0;
-	l->l[i].hyper_dmabuf_id = 0;
+	l->l[i].hyper_dmabuf_id.id = -1;
+	l->l[i].hyper_dmabuf_id.rng_key[0] = 0;
+	l->l[i].hyper_dmabuf_id.rng_key[1] = 0;
+	l->l[i].hyper_dmabuf_id.rng_key[2] = 0;
 	l->l[i].gem_handle = 0;
 }
 
 void init_buffers(void)
 {
+	int i;
+
 	hyper_dmabuf_list.l = calloc(1, HYPER_DMABUF_LIST_LEN * sizeof(struct buffer_rec));
-	hyper_dmabuf_list.len = HYPER_DMABUF_LIST_LEN;
 
 	if(!hyper_dmabuf_list.l) {
 		fprintf(stderr, "Error: allocating memory\n");
 		exit(1);
 	}
+
+	hyper_dmabuf_list.len = HYPER_DMABUF_LIST_LEN;
+
+	/* initialize entries */
+	for (i = 0 ; i < hyper_dmabuf_list.len; i++)
+		clear_rec(&hyper_dmabuf_list, i);
 }
 
 int init_hyper_dmabuf(int dom)
@@ -211,7 +224,7 @@ int init_hyper_dmabuf(int dom)
 	return 0;
 }
 
-static void update_oldest_rec_hyper_dmabuf(uint32_t old_id, GLuint *textureId,
+static void update_oldest_rec_hyper_dmabuf(hyper_dmabuf_id_t hid, GLuint *textureId,
 				    struct wl_buffer *buf, uint32_t width,
 				    uint32_t height, int age)
 {
@@ -219,7 +232,7 @@ static void update_oldest_rec_hyper_dmabuf(uint32_t old_id, GLuint *textureId,
 
 	clear_rec(&hyper_dmabuf_list, r);
 
-	hyper_dmabuf_list.l[r].hyper_dmabuf_id = old_id;
+	memcpy(&hyper_dmabuf_list.l[r].hyper_dmabuf_id, &hid, sizeof(hid));
 	hyper_dmabuf_list.l[r].buffer = buf;
 	hyper_dmabuf_list.l[r].textureId[0] = textureId[0];
 	hyper_dmabuf_list.l[r].textureId[1] = textureId[1];
@@ -228,15 +241,15 @@ static void update_oldest_rec_hyper_dmabuf(uint32_t old_id, GLuint *textureId,
 	hyper_dmabuf_list.l[r].age = age;
 }
 
-static void update_hyper_dmabuf_list(int id, int old_id)
+static void update_hyper_dmabuf_list(hyper_dmabuf_id_t id)
 {
 	int r = find_rec(&hyper_dmabuf_list, id);
 
 	age_list(&hyper_dmabuf_list);
 
+	/* if same id is found */
 	if (r >= 0) {
-		if (old_id == 0 ||
-		    hyper_dmabuf_list.l[r].width != surf_width ||
+		if (hyper_dmabuf_list.l[r].width != surf_width ||
 		    hyper_dmabuf_list.l[r].height != surf_height) {
 			clear_rec(&hyper_dmabuf_list, r);
 			create_new_hyper_dmabuf_buffer();
@@ -255,7 +268,7 @@ static void update_hyper_dmabuf_list(int id, int old_id)
 
 int check_for_new_buffer(void)
 {
-	static hyper_dmabuf_id_t old_hyper_dmabuf_id = { 0, {0, 0, 0} };
+	static hyper_dmabuf_id_t prev_id = { -1, {0, 0, 0} };
 	int ret = 0;
 
 	if (use_event_poll) {
@@ -270,16 +283,12 @@ int check_for_new_buffer(void)
 		return 1;
 	}
 
-	if (hyper_dmabuf_id.id == 0) {
-		old_hyper_dmabuf_id.id = 0;
-		clear_hyper_dmabuf_list();
+        /* to prevent it gets duplicated event for the same buffer */
+	if (memcmp(&hyper_dmabuf_id, &prev_id,
+	    sizeof(hyper_dmabuf_id))) {
+		update_hyper_dmabuf_list(hyper_dmabuf_id);
 	}
-	if ((hyper_dmabuf_id.id > 0)
-	    && (hyper_dmabuf_id.id != old_hyper_dmabuf_id.id)) {
-		update_hyper_dmabuf_list(hyper_dmabuf_id.id,
-					 old_hyper_dmabuf_id.id);
-	}
-	old_hyper_dmabuf_id = hyper_dmabuf_id;
+	prev_id = hyper_dmabuf_id;
 	return 0;
 }
 
@@ -541,7 +550,7 @@ static void create_new_buffer_common(int dmabuf_fd)
 							    surf_format, 0);
 		current_buffer = buf;
 	}
-	update_oldest_rec_hyper_dmabuf(hyper_dmabuf_id.id, textureId, buf,
+	update_oldest_rec_hyper_dmabuf(hyper_dmabuf_id, textureId, buf,
 				       surf_width, surf_height, 0);
 }
 
@@ -556,7 +565,10 @@ void create_new_hyper_dmabuf_buffer(void)
 		printf("Cannot import buffer %d %s\n", hyper_dmabuf_id.id,
 		       strerror(errno));
 		show_window = 0;
-		hyper_dmabuf_id.id = 0;
+		hyper_dmabuf_id.id = -1;
+		hyper_dmabuf_id.rng_key[0] = 0;
+		hyper_dmabuf_id.rng_key[1] = 0;
+		hyper_dmabuf_id.rng_key[2] = 0;
 		return;
 	}
 
