@@ -55,7 +55,7 @@ typedef int32_t s32;
 #define HYPER_DMABUF_DEV_PATH 		"/dev/hyper_dmabuf"
 
 typedef struct buffer_rec {
-	uint32_t hyper_dmabuf_id;
+	hyper_dmabuf_id_t hyper_dmabuf_id;
 	GLuint textureId[2];
 	struct wl_buffer *buffer;
 	uint32_t width;
