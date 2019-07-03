@@ -106,6 +106,29 @@ static int counter = 0;
 
 vmdisplay_socket vmsocket;
 
+static int log_timestamp(char *str)
+{
+	static struct timeval last_ts;
+	struct timeval cur_ts;
+	float d;
+	static int flag = 0;
+
+	gettimeofday(&cur_ts, NULL);
+	if (flag == 0)	{
+		flag  = 1;
+		gettimeofday(&last_ts, NULL);
+		printf("[%ld.%ld]\n", last_ts.tv_sec, last_ts.tv_usec);
+	} else {
+		d = ((cur_ts.tv_sec - last_ts.tv_sec) *1000000 + (cur_ts.tv_usec - last_ts.tv_usec)) /1000.0;
+		printf("[%8ld.%ld] duration(ms): %6.1f %s\n", cur_ts.tv_sec, cur_ts.tv_usec, d, str);
+		last_ts.tv_sec = cur_ts.tv_sec;
+		last_ts.tv_usec = cur_ts.tv_usec;
+	}
+
+	return 0;
+}
+
+
 #ifndef EGLTILING
 #define EGL_TILING			  0x3062
 #endif

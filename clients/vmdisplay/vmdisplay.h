@@ -103,4 +103,5 @@ void vmdisplay_socket_cleanup(vmdisplay_socket * socket);
 int send_input_event(vmdisplay_socket * socket,
 		     struct vmdisplay_input_event_header *header, void *event);
 
+static int log_timestamp(char *str);
 #endif // _VMDISPLAY_H_
