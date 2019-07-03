@@ -438,6 +438,7 @@ static void create_new_buffer_common(int dmabuf_fd)
 	int i;
 	int bpp;
 
+	log_timestamp("create_new_buffer_common() start");
 	struct timeval start, end;
 	if (g_Dbg) {
 		gettimeofday( &start, NULL );
@@ -753,6 +754,7 @@ static void create_new_buffer_common(int dmabuf_fd)
 		gettimeofday( &end, NULL );
 		printf("create_new_buffer_common() done:   time stamp=%ld  duration(ms):%ld\n", end.tv_sec*1000000+end.tv_usec,
 				((end.tv_sec*1000000+end.tv_usec)- (start.tv_sec*1000000+start.tv_usec))/1000);
+	log_timestamp("  update_oldest_rec_hyper_dmabuf() end");
 	}
 
 
@@ -765,6 +767,7 @@ void create_new_hyper_dmabuf_buffer(void)
 
 	msg.hid = hyper_dmabuf_id;
 
+	log_timestamp("create_new_hyper_dmabuf_buffer() ioctl start");
 	if (ioctl(hyper_dmabuf_fd, IOCTL_HYPER_DMABUF_EXPORT_FD, &msg)) {
 		printf("Cannot import buffer %d %s\n", hyper_dmabuf_id.id,
 		       strerror(errno));
@@ -775,8 +778,10 @@ void create_new_hyper_dmabuf_buffer(void)
 		hyper_dmabuf_id.rng_key[2] = 0;
 		return;
 	}
+	log_timestamp("create_new_hyper_dmabuf_buffer() ioctl end");
 
 	create_new_buffer_common(msg.fd);
+	log_timestamp("create_new_hyper_dmabuf_buffer() create_new_buffer_common done");
 
 	close(msg.fd);
 
