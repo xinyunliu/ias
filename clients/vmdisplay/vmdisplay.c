@@ -395,6 +395,7 @@ static void update_hyper_dmabuf_list(hyper_dmabuf_id_t id)
 {
 	int r = find_rec(&hyper_dmabuf_list, id);
 
+	log_timestamp("update_hyper_dmabuf_list() start");
 	age_list(&hyper_dmabuf_list);
 
 	if (r >= 0) {
@@ -402,6 +403,7 @@ static void update_hyper_dmabuf_list(hyper_dmabuf_id_t id)
 	} else {
 		create_new_hyper_dmabuf_buffer();
 	}
+	log_timestamp("update_hyper_dmabuf_list() end");
 }
 
 int check_for_new_buffer(void)
@@ -415,7 +417,7 @@ int check_for_new_buffer(void)
 	} else {
 		ret = parse_socket_metadata(&vmsocket, &counter);
 	}
-
+	log_timestamp(" check_for_new_buffer() get metadata");
 	if (ret) {
 		printf("Buffer table parse error\n");
 		clear_hyper_dmabuf_list();
