@@ -106,7 +106,7 @@ static int counter = 0;
 
 vmdisplay_socket vmsocket;
 
-static int log_timestamp(char *str)
+int log_timestamp(char *str)
 {
 	static struct timeval last_ts;
 	struct timeval cur_ts;
@@ -409,6 +409,7 @@ int check_for_new_buffer(void)
 	static hyper_dmabuf_id_t prev_id = {-1, {0, 0, 0}};
 	int ret = 0;
 
+	log_timestamp("check_for_new_buffer() start");
 	if (use_event_poll) {
 		ret = parse_event_metadata(hyper_dmabuf_fd, &counter);
 	} else {
@@ -426,6 +427,8 @@ int check_for_new_buffer(void)
 		update_hyper_dmabuf_list(hyper_dmabuf_id);
 	}
 	prev_id = hyper_dmabuf_id;
+	
+	log_timestamp("check_for_new_buffer() end");
 	return 0;
 }
 
@@ -439,12 +442,8 @@ static void create_new_buffer_common(int dmabuf_fd)
 
 	log_timestamp("create_new_buffer_common() start");
 	struct timeval start, end;
-	if (g_Dbg) {
-		gettimeofday( &start, NULL );
-		printf("create_new_buffer_common() start:  time stamp=%ld\n", start.tv_sec*1000000+start.tv_usec);
-	}
 
-	printf("format:%x tile:%x\n", surf_format, surf_tile_format);
+	//printf("format:%x tile:%x\n", surf_format, surf_tile_format);
 	switch (surf_format) {
 	case DRM_FORMAT_XRGB8888:
 		bpp = 32;
@@ -749,14 +748,8 @@ static void create_new_buffer_common(int dmabuf_fd)
 	}
 	update_oldest_rec_hyper_dmabuf(hyper_dmabuf_id, textureId, buf,
 				       surf_width, surf_height, 0);
-	if(g_Dbg) {
-		gettimeofday( &end, NULL );
-		printf("create_new_buffer_common() done:   time stamp=%ld  duration(ms):%ld\n", end.tv_sec*1000000+end.tv_usec,
-				((end.tv_sec*1000000+end.tv_usec)- (start.tv_sec*1000000+start.tv_usec))/1000);
+
 	log_timestamp("  update_oldest_rec_hyper_dmabuf() end");
-	}
-
-
 }
 
 void create_new_hyper_dmabuf_buffer(void)
@@ -778,9 +771,12 @@ void create_new_hyper_dmabuf_buffer(void)
 		return;
 	}
 	log_timestamp("create_new_hyper_dmabuf_buffer() ioctl end");
+	log_timestamp("create_new_hyper_dmabuf_buffer() create_new_buffer_common() start");
+	printf("format:%x tile:%x hid(%d %x %x %x)\n", surf_format, surf_tile_format,
+		hyper_dmabuf_id.id, hyper_dmabuf_id.rng_key[0], hyper_dmabuf_id.rng_key[1], hyper_dmabuf_id.rng_key[2]);
 
 	create_new_buffer_common(msg.fd);
-	log_timestamp("create_new_hyper_dmabuf_buffer() create_new_buffer_common done");
+	log_timestamp("create_new_hyper_dmabuf_buffer() create_new_buffer_common() end");
 
 	close(msg.fd);
 

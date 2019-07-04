@@ -627,6 +627,7 @@ static void redraw_egl(void *data, struct wl_callback *callback, uint32_t time)
 
 	if (show_window == 0 || ret != 0) {
 		eglSwapBuffers(g_eman_common.dpy, w->egl_surface);
+		printf("no new buffer, ----------------\n");
 		return;
 	}
 	// Use the program object
