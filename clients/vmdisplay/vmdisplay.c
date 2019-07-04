@@ -250,22 +250,10 @@ static void update_hyper_dmabuf_list(hyper_dmabuf_id_t id)
 	age_list(&hyper_dmabuf_list);
 
 	/* if same id is found */
-	if (r >= 0) {
-		if (hyper_dmabuf_list.l[r].width != surf_width ||
-		    hyper_dmabuf_list.l[r].height != surf_height) {
-			clear_rec(&hyper_dmabuf_list, r);
-			create_new_hyper_dmabuf_buffer();
-		} else {
-			last_rec(&hyper_dmabuf_list, r);
-			current_textureId[0] =
-			    hyper_dmabuf_list.l[r].textureId[0];
-			current_textureId[1] =
-			    hyper_dmabuf_list.l[r].textureId[1];
-			current_buffer = hyper_dmabuf_list.l[r].buffer;
-		}
-	} else {
-		create_new_hyper_dmabuf_buffer();
-	}
+	if (r >= 0)
+		clear_rec(&hyper_dmabuf_list, r);
+
+	create_new_hyper_dmabuf_buffer();
 	if (g_Dbg) {
 		gettimeofday(&cur_ts, NULL);
 		printf("[%8ld.%06ld] hid(%08x %08x %08x %08x) format:%x tile:%x\n",
