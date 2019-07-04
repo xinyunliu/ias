@@ -97,7 +97,7 @@ extern int use_event_poll;
 
 static int fd = -1;
 
-hyper_dmabuf_id_t current_hyper_dmabuf_id = { 0, {0, 0, 0} };
+//hyper_dmabuf_id_t current_hyper_dmabuf_id = { 0, {0, 0, 0} };
 
 unsigned int pipe_id = 0;
 
