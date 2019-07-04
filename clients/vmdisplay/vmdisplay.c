@@ -347,8 +347,7 @@ void init_buffers(void)
 	hyper_dmabuf_list.len = HYPER_DMABUF_LIST_LEN;
 
 	/* initialize entries */
-	for (i = 0; i < hyper_dmabuf_list.len; i++)
-		clear_rec(&hyper_dmabuf_list, i);
+	clear_hyper_dmabuf_list();
 }
 
 int init_hyper_dmabuf(int dom)
