@@ -104,6 +104,8 @@ unsigned int pipe_id = 0;
 int hyper_dmabuf_fd = -1;
 static int counter = 0;
 
+struct timeval cur_ts;
+
 vmdisplay_socket vmsocket;
 
 #ifndef EGLTILING
@@ -264,6 +266,14 @@ static void update_hyper_dmabuf_list(hyper_dmabuf_id_t id)
 	} else {
 		create_new_hyper_dmabuf_buffer();
 	}
+	if (g_Dbg) {
+		gettimeofday(&cur_ts, NULL);
+		printf("[%8ld.%06ld] hid(%08x %08x %08x %08x) format:%x tile:%x\n",
+			cur_ts.tv_sec, cur_ts.tv_usec,
+			hyper_dmabuf_id.id, hyper_dmabuf_id.rng_key[0],
+			hyper_dmabuf_id.rng_key[1], hyper_dmabuf_id.rng_key[2],
+			surf_format, surf_tile_format);
+	}
 }
 
 int check_for_new_buffer(void)
@@ -284,10 +294,18 @@ int check_for_new_buffer(void)
 	}
 
         /* to prevent it gets duplicated event for the same buffer */
-	if (memcmp(&hyper_dmabuf_id, &prev_id,
-	    sizeof(hyper_dmabuf_id))) {
+	if (memcmp(&hyper_dmabuf_id, &prev_id, sizeof(hyper_dmabuf_id))) {
 		update_hyper_dmabuf_list(hyper_dmabuf_id);
+	} else {
+		if (g_Dbg) {
+			gettimeofday(&cur_ts, NULL);
+			printf("[%8ld.%06ld] hid(%08x %08x %08x %08x) duplicated\n",
+			cur_ts.tv_sec, cur_ts.tv_usec,
+			hyper_dmabuf_id.id, hyper_dmabuf_id.rng_key[0],
+			hyper_dmabuf_id.rng_key[1], hyper_dmabuf_id.rng_key[2]);
+		}
 	}
+
 	prev_id = hyper_dmabuf_id;
 	return 0;
 }
