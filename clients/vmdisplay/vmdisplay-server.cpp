@@ -384,6 +384,10 @@ int VMDisplayServer::process_metadata()
 	int rc;
 	int output_num;
 	void *surfaces_metadata[VM_MAX_OUTPUTS];
+	static int old_counter =0;
+	static int old_n_counter[5]={0};
+	static int reset=0;
+	static int initial=1;
 
 	for (int i = 0; i < VM_MAX_OUTPUTS; i++)
 		surfaces_metadata[i] = outputs[i].shm_addr;
@@ -400,6 +404,54 @@ int VMDisplayServer::process_metadata()
 			printf("Lost connection to Dom%d compositor\n", domid);
 			running = false;
 			break;
+		}
+
+		if(1) {
+#define KRED  "\x1B[31m"
+#define KNRM  "\x1B[0m"
+			struct vm_header *hdr = (struct vm_header *) ((char *)(outputs[0].shm_addr));
+
+			int frame_number = hdr->counter;
+			int layers = hdr->n_buffers;
+			int i_counter = -1;
+			int i_index = -1;
+			int i;
+
+			if(initial == 1) {
+				old_counter = frame_number;
+				memset(old_n_counter, 0, 5 * sizeof(int)); //not good
+				initial =0;
+			}
+
+			if (old_counter != frame_number) {
+				old_counter = frame_number;
+				reset = 1;
+			}
+			printf("frame:%08d layers:%1d ", frame_number, layers);
+			for (i = 0; i < layers; i++) {
+				struct vm_buffer_info *buf_info = (struct vm_buffer_info *) ((char *)(outputs[0].shm_addr)
+						+ sizeof(struct vm_header)
+						+ i * sizeof(struct vm_buffer_info));
+				i_counter = buf_info->counter;
+				i_index = buf_info->surf_index;
+				printf("[idx:%1d surf_idx:%1d cnt:%08d] ", i, i_index, i_counter);
+				//if (i == 0) {
+				if (1) {
+					if (old_n_counter[i] >= i_counter) {
+						reset = 1;
+					}
+					old_n_counter[i] = i_counter;
+				}
+			}
+			printf("\n");
+			// printf(" old_n_count: %d\n",  old_n_counter[0]);
+			if (reset) {
+				printf("%s error! old:%08d new:%08d i_old:%08d i_new:%08d\n %s", KRED, old_counter, frame_number,
+						old_n_counter[0], i_counter, KNRM);
+				reset = 0;
+			}
+
+			old_counter++;
 		}
 
 		pthread_mutex_lock(&mutex);

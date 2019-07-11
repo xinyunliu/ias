@@ -41,6 +41,7 @@
 
 #include "vmdisplay-parser.h"
 #include "vmdisplay.h"
+#include <sys/syscall.h>
 
 struct vm_header vbt_header;
 struct vm_buffer_info *vbt;
@@ -175,6 +176,7 @@ int parse_socket_metadata(vmdisplay_socket * socket, int *counter)
 	int len;
 	struct vmdisplay_msg msg;
 
+
 	/* Wait for message about metadata update for given pipe/output */
 	do {
 		len = recv(socket->socket_fd, &msg, sizeof(msg), 0);
@@ -262,6 +264,12 @@ int parse_socket_metadata(vmdisplay_socket * socket, int *counter)
 	hyper_dmabuf_id = vbt[surf_index].hyper_dmabuf_id;
 
 	*counter = vbt[surf_index].counter;
+
+	printf("[vmdisp-%ld] counter:%08d {id:%08x key:%08x %08x %08x}\n",
+			syscall(__NR_gettid),
+			*counter,
+			hyper_dmabuf_id.id, hyper_dmabuf_id.rng_key[0],
+			hyper_dmabuf_id.rng_key[1],hyper_dmabuf_id.rng_key[2]);
 
 	show_window = 1;
 

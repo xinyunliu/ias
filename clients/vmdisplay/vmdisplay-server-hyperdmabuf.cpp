@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include "vmdisplay-server-hyperdmabuf.h"
 
+#include <sys/syscall.h>
 #define METADATA_SZ (sizeof(struct vm_header) +\
 		     sizeof(struct vm_buffer_info) +\
 		     sizeof(struct hyper_dmabuf_event_hdr))
@@ -127,6 +128,7 @@ int HyperDMABUFCommunicator::recv_metadata(void **buffer)
 	if (direction != HyperCommunicatorInterface::Receiver)
 		return -1;
 
+	// printf("pid:%x start recv_metadata\n", syscall(__NR_gettid));
 	while (1) {
 		 /*
 		  * In case when we already received buffer for next frame,
