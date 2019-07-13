@@ -135,6 +135,10 @@ int HyperDMABUFCommunicator::recv_metadata(void **buffer)
 		  * append its metadata to new frame metadata.
 		  */
 		if (hdr && hdr->counter != last_counter[hdr->output]) {
+
+			if (hdr->counter < last_counter[hdr->output]) {
+				printf("Error: cur: %d  < old: %d\n");
+			}
 			/* Copy metatadat to mmaped file of given output */
 			memcpy((char *)buffer[hdr->output] +
 			       offset[hdr->output], buf_info,
