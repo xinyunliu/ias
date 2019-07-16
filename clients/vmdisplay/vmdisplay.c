@@ -267,6 +267,7 @@ static void update_hyper_dmabuf_list(hyper_dmabuf_id_t id)
 int check_for_new_buffer(void)
 {
 	static hyper_dmabuf_id_t prev_id = { -1, {0, 0, 0} };
+	static int frame_counter = -1;
 	int ret = 0;
 
 	if (use_event_poll) {
@@ -282,16 +283,18 @@ int check_for_new_buffer(void)
 	}
 
         /* to prevent it gets duplicated event for the same buffer */
-	if (memcmp(&hyper_dmabuf_id, &prev_id, sizeof(hyper_dmabuf_id))) {
+
+	if (counter > frame_counter) {
 		update_hyper_dmabuf_list(hyper_dmabuf_id);
-	} else {
-		if (g_Dbg) {
-			gettimeofday(&cur_ts, NULL);
-			printf("[%8ld.%06ld] hid(%08x %08x %08x %08x) duplicated\n",
-			cur_ts.tv_sec, cur_ts.tv_usec,
-			hyper_dmabuf_id.id, hyper_dmabuf_id.rng_key[0],
-			hyper_dmabuf_id.rng_key[1], hyper_dmabuf_id.rng_key[2]);
-		}
+	} else if (memcmp(&hyper_dmabuf_id, &prev_id, sizeof(hyper_dmabuf_id))
+		   && counter == frame_counter) {
+		update_hyper_dmabuf_list(hyper_dmabuf_id);
+	} else if(g_Dbg) {
+		gettimeofday(&cur_ts, NULL);
+		printf("[%8ld.%06ld] hid(%08x %08x %08x %08x) duplicated\n",
+				cur_ts.tv_sec, cur_ts.tv_usec,
+				hyper_dmabuf_id.id, hyper_dmabuf_id.rng_key[0],
+				hyper_dmabuf_id.rng_key[1], hyper_dmabuf_id.rng_key[2]);
 	}
 
 	prev_id = hyper_dmabuf_id;
