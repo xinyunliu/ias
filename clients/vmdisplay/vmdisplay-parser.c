@@ -175,6 +175,7 @@ int parse_socket_metadata(vmdisplay_socket * socket, int *counter)
 {
 	int len;
 	struct vmdisplay_msg msg;
+	int real_idx = -1;
 
 
 	/* Wait for message about metadata update for given pipe/output */
@@ -245,25 +246,37 @@ int parse_socket_metadata(vmdisplay_socket * socket, int *counter)
 			return 1;
 		}
 	}
-	surf_width = vbt[surf_index].width;
-	surf_height = vbt[surf_index].height;
-	surf_stride[0] = vbt[surf_index].pitch[0];
-	surf_stride[1] = vbt[surf_index].pitch[1];
-	surf_stride[2] = vbt[surf_index].pitch[2];
-	surf_offset[0] = vbt[surf_index].offset[0];
-	surf_offset[1] = vbt[surf_index].offset[1];
-	surf_offset[2] = vbt[surf_index].offset[2];
-	surf_format = vbt[surf_index].format;
-	surf_tile_format = vbt[surf_index].tile_format;
-	surf_rotation = vbt[surf_index].rotation;
-	surf_disp_x = vbt[surf_index].bbox[0];
-	surf_disp_y = vbt[surf_index].bbox[1];
-	surf_disp_w = vbt[surf_index].bbox[2];
-	surf_disp_h = vbt[surf_index].bbox[3];
 
-	hyper_dmabuf_id = vbt[surf_index].hyper_dmabuf_id;
+	for (int i = 0; i < vbt_header.n_buffers; i++) {
+		if (vbt[i].surf_index == surf_index) {
+			real_idx = i;
+			break;
+		}
+	}
+	if (real_idx == -1) {
+		printf("Bad surface idx\n");
+		return 1;
+	}
 
-	*counter = vbt[surf_index].counter;
+	surf_width = vbt[real_idx].width;
+	surf_height = vbt[real_idx].height;
+	surf_stride[0] = vbt[real_idx].pitch[0];
+	surf_stride[1] = vbt[real_idx].pitch[1];
+	surf_stride[2] = vbt[real_idx].pitch[2];
+	surf_offset[0] = vbt[real_idx].offset[0];
+	surf_offset[1] = vbt[real_idx].offset[1];
+	surf_offset[2] = vbt[real_idx].offset[2];
+	surf_format = vbt[real_idx].format;
+	surf_tile_format = vbt[real_idx].tile_format;
+	surf_rotation = vbt[real_idx].rotation;
+	surf_disp_x = vbt[real_idx].bbox[0];
+	surf_disp_y = vbt[real_idx].bbox[1];
+	surf_disp_w = vbt[real_idx].bbox[2];
+	surf_disp_h = vbt[real_idx].bbox[3];
+
+	hyper_dmabuf_id = vbt[real_idx].hyper_dmabuf_id;
+
+	*counter = vbt[real_idx].counter;
 
 	printf("[vmdisp-%ld] counter:%08d {id:%08x key:%08x %08x %08x}\n",
 			syscall(__NR_gettid),
