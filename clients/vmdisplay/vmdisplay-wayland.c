@@ -140,6 +140,16 @@ static const char *vert_shader_text =
     "}                                       \n";
 
 static const char *frag_shader_text =
+    "precision mediump float;                       \n"
+    "vec4 color(float y,float u, float v) {         \n"
+    "    vec4 c;                                    \n"
+    "    c.r = y + 1.59602678 * v;                  \n"
+    "    c.g = y - 0.39176229 * u - 0.81296764 * v; \n"
+    "    c.b = y + 2.01723214 * u;                  \n"
+    "    c.a = 1.0;                                 \n"
+    "    return c;                                  \n"
+    "}                                              \n"
+
     "precision mediump float;                            \n"
     "varying vec2 v_texCoord;                            \n"
     "uniform vec2 s_texSize;                             \n"
@@ -164,12 +174,18 @@ static const char *frag_shader_text =
     "      v = raw.a-0.5;                                 \n"
     "      y = 1.1643*(raw.b-0.0625);                     \n"
     "    }                                                \n"
+    "    gl_FragColor = color(y, u, v);                   \n"
+    "  }                                                  \n"
+    "}                                                    \n";
+
+/*
     "    gl_FragColor.r = y + 1.59602678 * v;             \n"
     "    gl_FragColor.g = y - 0.39176229 * u - 0.81296764 * v;\n"
     "    gl_FragColor.b = y + 2.01723214 * u;             \n"
     "    gl_FragColor.a = 1.0;                            \n"
     "  }                                                  \n"
     "}                                                    \n";
+*/
 
 static const char *frag_shader_text_bgra =
     "precision mediump float;                            \n"
