@@ -76,7 +76,7 @@
 #define DRM_FORMAT_GR88          fourcc_code('G', 'R', '8', '8')	/* [15:0] G:R 8:8 little endian */
 #endif
 
-#define HYPER_DMABUF_LIST_LEN 4
+#define HYPER_DMABUF_LIST_LEN 9
 
 static PFNEGLCREATEIMAGEKHRPROC create_image;
 static PFNEGLDESTROYIMAGEKHRPROC destroy_image;
@@ -298,6 +298,7 @@ int check_for_new_buffer(void)
 	}
 
 	prev_id = hyper_dmabuf_id;
+	//frame_counter = counter; bug!!
 	return 0;
 }
 
