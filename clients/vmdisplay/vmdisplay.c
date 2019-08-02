@@ -263,7 +263,10 @@ static void update_hyper_dmabuf_list(hyper_dmabuf_id_t id)
 
 
 
-GLubyte flag_buffer[8]={0xaa, 0xab, 0xac, 0xad, 0xda, 0xdb, 0xdc, 0xdd};
+//GLubyte flag_buffer[8]={0x1a, 0x2b, 0x3c, 0x0d, 0xd0, 0xc3, 0xb2, 0xa1};
+//GLubyte flag_buffer[8]={0};
+GLubyte flag_buffer[8]={0x1a,0x1b,0x1c,0x1d,0x1d,0x1c,0x1b,0x1a};
+//GLubyte flag_buffer[8]={0xaa};
 GLubyte old_buffer[8];
 
 
@@ -279,6 +282,8 @@ static int check_and_set_stamp(int fd, size_t size)
 	int drm_fd;
 	drm_intel_bo *bo;
 	int ret = -1;
+
+	static int sim_count =0;
 
 	drm_fd = drmOpen("i915", NULL);
 
@@ -314,13 +319,20 @@ static int check_and_set_stamp(int fd, size_t size)
 		ret = 1;
 	} else {
 		// new buffer is ready.
-
 		memcpy(old_buffer, (GLubyte *)bo->virtual, 8);
 		memcpy((GLubyte *)bo->virtual, flag_buffer, 8);
 		if (g_Dbg) {
-			printf("old:%lx new:%lx\n", *(long *)old_buffer, *(long*)flag_buffer);
+			;
+		//	printf("old:%lx new:%lx\n", *(long *)old_buffer, *(long*)flag_buffer);
 		}
 		ret = 0;
+
+		if(g_Dbg &&(sim_count++ >=100 || random()%30==1)) {
+			sim_count = 0;
+			ret = 1;
+			printf("old:%lx new:%lx\n", *(long *)old_buffer, *(long*)flag_buffer);
+			printf(" simulate old frame buff\n");
+		}
 	}
 
 	drm_intel_gem_bo_unmap_gtt(bo);
@@ -338,19 +350,18 @@ err_drm_cleanup:
    if dmabuf has a special flag, this dma_buf was not updated in time, so could
    introduce flicker
 
-   specail: 0x33442211
+   specail: 0x1a1b1c1d1d1c1b1a
 
    return:
    	 1:  has stamp  (old buf)
    	 0:  no stamp
-
 */
 static int has_stamp(hyper_dmabuf_id_t hid)
 {
 	static int flag_continue = 0;
 	struct ioctl_hyper_dmabuf_export_fd msg;
 	msg.fd = -1;
-	int ret = -1;
+	int ret = 0;
 	msg.hid = hyper_dmabuf_id;
 
 	if (flag_continue <= 20) {
@@ -363,11 +374,14 @@ static int has_stamp(hyper_dmabuf_id_t hid)
 		printf("Cannot import buffer %d %s\n", hyper_dmabuf_id.id,
 				strerror(errno));
 
-		// failed to get drm_buf, use  the previous hid
+		// failed to get drm_buf, use the previous hid
 		return 1;
 	}
 
 	if (check_and_set_stamp(msg.fd, surf_width*surf_height*4) == 1) {
+	        // This is specific for single RGB layer
+		// Takes account for multiple layers, need to record more state
+		// of prev_hid, eg. width/height/format
 		ret = 1;
 	}
 
