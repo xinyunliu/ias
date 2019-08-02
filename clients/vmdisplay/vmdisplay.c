@@ -266,6 +266,115 @@ static void update_hyper_dmabuf_list(hyper_dmabuf_id_t id)
 	}
 }
 
+
+
+GLubyte flag_buffer[8]={0xaa, 0xab, 0xac, 0xad, 0xda, 0xdb, 0xdc, 0xdd};
+GLubyte old_buffer[8];
+
+
+/*  check_and_set_stamp()
+ret:
+	1 -- old buffer data
+	0 -- new buffer data
+	1 -- failed to check
+*/
+
+static int check_and_set_stamp(int fd, size_t size)
+{
+	int drm_fd;
+	drm_intel_bo *bo;
+	int ret = -1;
+
+	drm_fd = drmOpen("i915", NULL);
+
+	if (drm_fd < 0) {
+		printf("Failed to open drm device\n");
+		ret = -1;
+		return ret;
+	}
+
+	dri_bufmgr *bufmgr = intel_bufmgr_gem_init(drm_fd, 0x1000*8);
+
+	bo = drm_intel_bo_gem_create_from_prime(bufmgr, fd, size);
+
+	if (!bo) {
+		printf("failed to map bo\n");
+		ret = -1;
+		goto err_drm_cleanup;
+	}
+
+	drm_intel_gem_bo_map_gtt(bo);
+
+	if (!bo->virtual) {
+		printf("failed to map bo in aperture\n");
+		ret = -1;
+		goto err_bo_cleanup;
+	}
+
+	if(!memcmp(flag_buffer, (GLubyte *)bo->virtual, 8)) {
+		// old buffer content!!!, need to ignore
+		ret = 1;
+	} else {
+		// new buffer is ready.
+		memcpy(old_buffer, (GLubyte *)bo->virtual, 8);
+		memcpy((GLubyte *)bo->virtual, flag_buffer, 8);
+		ret = 0;
+	}
+
+	drm_intel_gem_bo_unmap_gtt(bo);
+err_bo_cleanup:
+	drm_intel_bo_unreference(bo);
+err_bufmgr_cleanup:
+	drm_intel_bufmgr_destroy(bufmgr);
+err_drm_cleanup:
+	drmClose(drm_fd);
+	return ret;
+}
+
+
+/*
+   if dmabuf has a special flag, this dma_buf was not updated in time, so could
+   introduce flicker
+
+   specail: 0x33442211
+
+   return:
+	 1:  has stamp  (old buf)
+	 0:  no stamp
+
+*/
+static int has_stamp(hyper_dmabuf_id_t hid)
+{
+	static int flag_continue = 0;
+	struct ioctl_hyper_dmabuf_export_fd msg;
+	msg.fd = -1;
+	int ret = -1;
+	msg.hid = hyper_dmabuf_id;
+
+	if (flag_continue <= 20) {
+		//ignore the first 20 frames
+		++flag_continue;
+		return 0;
+	}
+
+	if (ioctl(hyper_dmabuf_fd, IOCTL_HYPER_DMABUF_EXPORT_FD, &msg)) {
+		printf("Cannot import buffer %d %s\n", hyper_dmabuf_id.id,
+				strerror(errno));
+
+		// failed to get drm_buf, use  the previous hid
+		return 1;
+	}
+
+	if (check_and_set_stamp(msg.fd, surf_width*surf_height*4) == 1) {
+		ret = 1;
+	}
+
+	close(msg.fd);
+
+	return ret;
+}
+
+
 int check_for_new_buffer(void)
 {
 	static hyper_dmabuf_id_t prev_id = { -1, {0, 0, 0} };
@@ -284,11 +393,20 @@ int check_for_new_buffer(void)
 	}
 
         /* to prevent it gets duplicated event for the same buffer */
-	if (memcmp(&hyper_dmabuf_id, &prev_id,
-	    sizeof(hyper_dmabuf_id))) {
-		update_hyper_dmabuf_list(hyper_dmabuf_id);
+	if (memcmp(&hyper_dmabuf_id, &prev_id, sizeof(hyper_dmabuf_id))) {
+		// need to draw new hbuf
+		if (has_stamp(hyper_dmabuf_id) == 1) {
+			// the new hbuf has stale content!
+			// so use previous hbuf/texture
+			hyper_dmabuf_id = prev_id;
+		} else {
+			prev_id = hyper_dmabuf_id;
+		}
+	} else {
+		prev_id = hyper_dmabuf_id;
 	}
-	prev_id = hyper_dmabuf_id;
+
+	update_hyper_dmabuf_list(hyper_dmabuf_id);
 	return 0;
 }
 
