@@ -308,11 +308,18 @@ static int check_and_set_stamp(int fd, size_t size)
 
 	if(!memcmp(flag_buffer, (GLubyte *)bo->virtual, 8)) {
 		// old buffer content!!!, need to ignore
+		if (g_Dbg) {
+			printf("dma_buf not updated!\n");
+		}
 		ret = 1;
 	} else {
 		// new buffer is ready.
+
 		memcpy(old_buffer, (GLubyte *)bo->virtual, 8);
 		memcpy((GLubyte *)bo->virtual, flag_buffer, 8);
+		if (g_Dbg) {
+			printf("old:%lx new:%lx\n", *(long *)old_buffer, *(long*)flag_buffer);
+		}
 		ret = 0;
 	}
 
