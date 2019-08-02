@@ -97,12 +97,12 @@ extern int use_event_poll;
 
 static int fd = -1;
 
-hyper_dmabuf_id_t current_hyper_dmabuf_id = { 0, {0, 0, 0} };
-
 unsigned int pipe_id = 0;
 
 int hyper_dmabuf_fd = -1;
 static int counter = 0;
+
+struct timeval cur_ts;
 
 vmdisplay_socket vmsocket;
 
@@ -140,7 +140,7 @@ static void age_list(struct buffer_list *l)
 		l->l[i].age++;
 }
 
-static void last_rec(struct buffer_list *l, int i)
+static void refresh_rec(struct buffer_list *l, int i)
 {
 	l->l[i].age = 0;
 }
@@ -184,8 +184,6 @@ static void clear_rec(struct buffer_list *l, int i)
 
 void init_buffers(void)
 {
-	int i;
-
 	hyper_dmabuf_list.l = calloc(1, HYPER_DMABUF_LIST_LEN * sizeof(struct buffer_rec));
 
 	if(!hyper_dmabuf_list.l) {
@@ -196,8 +194,7 @@ void init_buffers(void)
 	hyper_dmabuf_list.len = HYPER_DMABUF_LIST_LEN;
 
 	/* initialize entries */
-	for (i = 0 ; i < hyper_dmabuf_list.len; i++)
-		clear_rec(&hyper_dmabuf_list, i);
+	clear_hyper_dmabuf_list();
 }
 
 int init_hyper_dmabuf(int dom)
@@ -254,11 +251,9 @@ static void update_hyper_dmabuf_list(hyper_dmabuf_id_t id)
 			clear_rec(&hyper_dmabuf_list, r);
 			create_new_hyper_dmabuf_buffer();
 		} else {
-			last_rec(&hyper_dmabuf_list, r);
-			current_textureId[0] =
-			    hyper_dmabuf_list.l[r].textureId[0];
-			current_textureId[1] =
-			    hyper_dmabuf_list.l[r].textureId[1];
+			refresh_rec(&hyper_dmabuf_list, r);
+			current_textureId[0] = hyper_dmabuf_list.l[r].textureId[0];
+			current_textureId[1] = hyper_dmabuf_list.l[r].textureId[1];
 			current_buffer = hyper_dmabuf_list.l[r].buffer;
 		}
 	} else {
@@ -339,8 +334,8 @@ err_drm_cleanup:
    specail: 0x33442211
 
    return:
-	 1:  has stamp  (old buf)
-	 0:  no stamp
+   	 1:  has stamp  (old buf)
+   	 0:  no stamp
 
 */
 static int has_stamp(hyper_dmabuf_id_t hid)
@@ -403,7 +398,7 @@ int check_for_new_buffer(void)
 			prev_id = hyper_dmabuf_id;
 		}
 	} else {
-		prev_id = hyper_dmabuf_id;
+	 	prev_id = hyper_dmabuf_id;
 	}
 
 	update_hyper_dmabuf_list(hyper_dmabuf_id);
